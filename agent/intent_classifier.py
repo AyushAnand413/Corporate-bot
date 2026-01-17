@@ -1,13 +1,22 @@
+from llm.ollama_client import call_ollama
+
+INTENT_PROMPT = """
+You are an enterprise IT assistant.
+
+Classify the user request into exactly ONE category:
+- ACTION (creating a ticket, fixing an issue, requesting help)
+- INFORMATION (asking a question)
+
+User input:
+"{query}"
+
+Return ONLY the category name.
+"""
+
 def classify_intent(query: str) -> str:
-    query_lower = query.lower()
+    result = call_ollama(INTENT_PROMPT.format(query=query)).strip().upper()
 
-    action_keywords = [
-        "create", "raise", "schedule",
-        "book", "open ticket", "file ticket"
-    ]
+    if result not in ("ACTION", "INFORMATION"):
+        return "INFORMATION"
 
-    for kw in action_keywords:
-        if kw in query_lower:
-            return "ACTION"
-
-    return "INFORMATION"
+    return result

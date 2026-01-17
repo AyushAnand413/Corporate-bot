@@ -3,7 +3,8 @@ import requests
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "mistral"
 
-def call_ollama(prompt: str, timeout: int = 60) -> str:
+
+def call_ollama(prompt: str, timeout: int = 180) -> str:
     payload = {
         "model": MODEL_NAME,
         "prompt": prompt,
@@ -21,7 +22,13 @@ def call_ollama(prompt: str, timeout: int = 60) -> str:
             timeout=timeout
         )
         response.raise_for_status()
+
+        # Return RAW model output only
         return response.json().get("response", "").strip()
 
-    except Exception:
-        return "Information not found in the document."
+    except Exception as e:
+        # ❗ IMPORTANT:
+        # Do NOT return semantic text here
+        # Let supervisor decide refusal behavior
+        print(f"⚠️ Ollama call failed: {e}")
+        return ""

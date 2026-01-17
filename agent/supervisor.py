@@ -1,119 +1,132 @@
 import json
 
-# Ensure these modules exist in your project structure
+from click import prompt
+
 from agent.intent_classifier import classify_intent
-from agent.prompt_builder import build_prompt
+from agent.prompt_builder import build_prompt, build_action_prompt
 from agent.refusal import refusal_response
 from llm.ollama_client import call_ollama
 
-# Updated Imports for Professional RAG
 from retrieval.retriever import Retriever
 from retrieval.reranker import Reranker
 from retrieval.context_builder import build_context
 
+
 class AgentSupervisor:
     def __init__(self):
         print("🤖 Initializing Agent Supervisor...")
-        
-        # 1. Initialize Fast Retriever (High Recall)
-        # We fetch 25 candidates to ensure we don't miss the answer
+
         self.retriever = Retriever(
             index_path="data/processed/chunks.faiss",
             meta_path="data/processed/chunks_meta.json",
             initial_top_k=25
         )
 
-        # 2. Initialize Accurate Reranker (High Precision)
-        # This sorts the Top 25 to find the true Top 5
         self.reranker = Reranker()
 
-        # 3. Load Raw Tables (Legacy support for your specific table lookup)
-        # Ensure this file exists, otherwise wrap in try-except
         try:
             with open("data/processed/tables_raw.json", "r", encoding="utf-8") as f:
                 self.tables_raw = json.load(f)
         except FileNotFoundError:
-            print("⚠️ Warning: tables_raw.json not found. Table lookups will be empty.")
+            print("⚠️ Warning: tables_raw.json not found. Table lookups disabled.")
             self.tables_raw = []
 
+    # ---------------------------
+    # Table Loader
+    # ---------------------------
     def _load_tables(self, table_ids):
-        """
-        Load tables safely.
-        Supports both structured (HTML) and unstructured tables.
-        """
         loaded_tables = []
 
         for t in self.tables_raw:
-            if t["id"] not in table_ids:
+            if t.get("id") not in table_ids:
                 continue
 
-            # Structured table → HTML
             if t.get("table_type") == "structured" and "table_html" in t:
-                loaded_tables.append(
-                    f"[STRUCTURED TABLE]\n{t['table_html']}"
-                )
-
-            # Unstructured fallback → raw text
+                loaded_tables.append(t["table_html"])
             elif "raw_text" in t:
-                loaded_tables.append(
-                    f"[UNSTRUCTURED TABLE]\n{t['raw_text']}"
-                )
+                loaded_tables.append(t["raw_text"])
 
         return loaded_tables
 
-
+    # ---------------------------
+    # MAIN HANDLER
+    # ---------------------------
     def handle(self, query: str):
-        # 1. Classify Intent
         intent = classify_intent(query)
 
-        # ---------------------------
-        # ACTION PATH (Mock)
-        # ---------------------------
+        # ==================================================
+        # ACTION PATH — IT SERVICE DESK
+        # ==================================================
         if intent == "ACTION":
+            prompt = build_action_prompt(query)
+            raw_output = call_ollama(prompt)
+
+            try:
+                extracted = json.loads(raw_output)
+            except json.JSONDecodeError:
+                extracted = {
+                    "department": "IT",
+                    "issue_summary": query,
+                    "priority": "Medium"
+                }
+
             return {
+                "type": "action",
                 "action": "create_ticket",
-                "department": "IT",
-                "priority": "High",
-                "description": query
+                "department": extracted.get("department", "IT"),
+                "description": extracted.get("issue_summary", query),
+                "priority": extracted.get("priority", "Medium")
             }
 
-        # ---------------------------
-        # RAG INFORMATION PATH
-        # ---------------------------
-        
-        # Step A: Broad Retrieval (Get 25 candidates)
+        # ==================================================
+        # INFORMATION PATH — RAG (FIXED)
+        # ==================================================
         candidates = self.retriever.retrieve(query)
-        
-        # Step B: Precision Reranking (Get top 5 best matches)
-        ranked_results = self.reranker.rerank(query, candidates, top_k=5)
+        ranked_results = self.reranker.rerank(query, candidates, top_k=7)
 
-        # Guard clause: If nothing is relevant
         if not ranked_results:
-            return refusal_response()
+            return {
+                "type": "information",
+                "answer": refusal_response()
+            }
 
-        # Step C: Build Clean Context
         context_payload = build_context(ranked_results)
-        
-        # Select the absolute best match for the answer generation
-        # (You can expand this to use top 3, but prompt_builder currently expects one section)
-        top_match = context_payload["context"][0]
+        top_matches = context_payload["context"][:2]
 
-        # Fetch full table content if the chunk references any tables
-        raw_tables = self._load_tables(top_match.get("tables", []))
+        # ✅ Inject page numbers directly into the text
+        context_parts = []
+        for c in top_matches:
+            pages = c.get("pages", [])
+            page_str = ", ".join(str(p) for p in pages) if pages else "Unknown"
+            chunk_text = f"[Source: Page {page_str}]\n{c['text']}"
+            context_parts.append(chunk_text)
 
-        # Step D: Construct Prompt
+        merged_text = "\n\n---\n\n".join(context_parts)
+
+        # Collect tables
+        table_ids = set()
+        for c in top_matches:
+            table_ids.update(c.get("tables", []))
+
+        raw_tables = self._load_tables(table_ids)
+
         prompt = build_prompt(
             question=query,
-            section_text=top_match["text"],
+            section_text=merged_text,
             tables=raw_tables,
-            page=top_match["pages"][0] if top_match["pages"] else "Unknown"
+            page="Unknown"  # kept for signature compatibility
         )
-
-        # Step E: LLM Generation
+        # 🔍 DEBUG: check prompt size
+        print("🔍 Prompt length:", len(prompt))  #comment out later 
         answer = call_ollama(prompt)
 
+        if not answer or answer.strip() == "Information not found in the document.":
+            return {
+                "type": "information",
+                "answer": refusal_response()
+            }
+
         return {
-            "answer": answer,
-            "page": top_match["pages"][0] if top_match["pages"] else "Unknown",
-            "context_score": ranked_results[0].get("rerank_score", 0)
+            "type": "information",
+            "answer": answer
         }

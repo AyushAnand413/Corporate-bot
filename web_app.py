@@ -3,7 +3,6 @@ from agent.supervisor import AgentSupervisor
 
 app = Flask(__name__)
 
-# Initialize Agent once
 agent = AgentSupervisor()
 
 @app.route("/")
@@ -22,8 +21,4 @@ def chat():
     return jsonify(response)
 
 if __name__ == "__main__":
-    app.run(
-        host="127.0.0.1",
-        port=8501,
-        debug=False
-    )
+    app.run(host="127.0.0.1", port=8501, debug=False)
