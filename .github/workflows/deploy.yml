@@ -44,13 +44,33 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Validate Hugging Face secrets
+        env:
+          HF_TOKEN_DEPLOY: ${{ secrets.HF_TOKEN_DEPLOY }}
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          HF_SPACE_NAME: ${{ secrets.HF_SPACE_NAME }}
+        run: |
+          set -euo pipefail
+          for var in HF_TOKEN_DEPLOY HF_USERNAME HF_SPACE_NAME; do
+            val="${!var:-}"
+            if [ -z "$val" ]; then
+              echo "::error::Missing required secret: $var"
+              exit 1
+            fi
+            if [[ "$val" =~ [[:space:]] ]]; then
+              echo "::error::Secret $var contains whitespace. Save only the raw value with no spaces/newlines."
+              exit 1
+            fi
+          done
+
       - name: Clone Hugging Face Space
         env:
           HF_TOKEN_DEPLOY: ${{ secrets.HF_TOKEN_DEPLOY }}
           HF_USERNAME: ${{ secrets.HF_USERNAME }}
           HF_SPACE_NAME: ${{ secrets.HF_SPACE_NAME }}
         run: |
-          git clone https://${HF_USERNAME}:${HF_TOKEN_DEPLOY}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git hf-space
+          REPO_URL="https://${HF_USERNAME}:${HF_TOKEN_DEPLOY}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git"
+          git clone "$REPO_URL" hf-space
 
       - name: Sync project files to Space
         run: |
@@ -68,6 +88,7 @@ jobs:
           HF_SPACE_NAME: ${{ secrets.HF_SPACE_NAME }}
         run: |
           cd hf-space
+          REPO_URL="https://${HF_USERNAME}:${HF_TOKEN_DEPLOY}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git"
           git add .
           git commit -m "Deploy from GitHub Actions (${GITHUB_SHA})" || echo "No changes to commit"
-          git push https://${HF_USERNAME}:${HF_TOKEN_DEPLOY}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}.git main
+          git push "$REPO_URL" main
