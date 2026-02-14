@@ -79,7 +79,8 @@ jobs:
             --exclude '__pycache__/' \
             --exclude '.github/' \
             --exclude '.git/' \
-            ./ hf-space/
+            --exclude 'hf-space/' \
+            ./ hf-space/ || [ $? -eq 24 ]
 
       - name: Commit and push to Space
         env:
