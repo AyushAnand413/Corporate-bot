@@ -6,11 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/tmp/.huggingface \
     SENTENCE_TRANSFORMERS_HOME=/tmp/.cache/sentence-transformers
 
+
 WORKDIR /app
 
 
 # ==========================================
-# Install system dependencies
+# Install system dependencies (CRITICAL)
 # ==========================================
 
 RUN apt-get update && \
@@ -18,7 +19,15 @@ RUN apt-get update && \
         libgl1 \
         libglib2.0-0 \
         poppler-utils \
+        tesseract-ocr \
+        libtesseract-dev \
+        libleptonica-dev \
+        pkg-config \
     && rm -rf /var/lib/apt/lists/*
+
+
+# Verify tesseract installed
+RUN tesseract --version
 
 
 # ==========================================
