@@ -8,18 +8,45 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+
+# ==========================================
+# Install system dependencies
+# ==========================================
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      libgl1 \
-      libglib2.0-0 && \
-    rm -rf /var/lib/apt/lists/*
+        libgl1 \
+        libglib2.0-0 \
+        poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+
+# ==========================================
+# Install Python dependencies
+# ==========================================
 
 COPY requirements.txt /app/requirements.txt
+
 RUN python -m pip install --upgrade pip && \
     python -m pip install -r /app/requirements.txt
 
+
+# ==========================================
+# Copy app
+# ==========================================
+
 COPY . /app
 
+
+# ==========================================
+# Expose port
+# ==========================================
+
 EXPOSE 7860
+
+
+# ==========================================
+# Run Flask
+# ==========================================
 
 CMD ["sh", "-c", "python -m flask --app web_app:app run --host 0.0.0.0 --port ${PORT:-7860}"]
