@@ -1,255 +1,319 @@
-﻿---
-title: Corporate Bot Backend
+---
+title: Corporate RAG Bot Backend
 emoji: 🤖
 sdk: docker
 app_port: 7860
 ---
-# Corporate-Bot ðŸ¤–
 
-### Agentic Assistant for Annual Report Q&A and Workplace Actions
 
-An **offline, agentic AI assistant** that can **accurately answer questions from large corporate PDFs** (HCLTech Annual Report) and **trigger structured workplace actions** (e.g., IT tickets, HR requests) â€” built for **real-time local demos**.
+# 🤖 Corporate-Bot — Enterprise RAG Assistant
 
----
+**Corporate-Bot** is a production-grade, agentic Retrieval-Augmented Generation (RAG) assistant that enables users to upload corporate PDFs and interact with them using natural language.
 
-## ðŸš€ Problem Statement
-
-Enterprises struggle to:
-
-* Extract **accurate, page-cited answers** from long PDFs
-* Avoid hallucinations in financial and compliance data
-* Convert natural language commands into **structured actions**
-
-**Corporate-Bot** solves this using a **production-grade RAG + Agent Supervisor architecture**, running fully **offline**.
+It provides **accurate, grounded answers and structured workplace actions** powered by HuggingFace-hosted LLM inference.
 
 ---
 
-## ðŸ§  Key Capabilities
+# 🌐 Live Architecture
 
-### ðŸ“„ Chat with PDF (RAG)
-
-* Ask factual or conceptual questions from the annual report
-* Answers are **grounded**, **page-cited**, and **auditable**
-* Handles **text, tables, and images** correctly
-
-### âš™ï¸ Action Intelligence
-
-* Understands intent (question vs action)
-* Produces **structured JSON outputs** for actions
-* Example:
-
-  > â€œCreate a ticket for VPN not workingâ€
-
-### ðŸ›‘ Hallucination Control
-
-* Strict refusal logic for missing information
-* No guessing on tables or financial data
-* Explicit â€œInformation not foundâ€ responses
+Frontend: Next.js (Vercel)
+Backend: Flask API (HuggingFace Spaces — Docker)
+LLM: HuggingFace Inference API (meta-llama/Llama-3.2-3B-Instruct:novita)
 
 ---
 
-## ðŸ—ï¸ Architecture Overview
+# 🚀 Core Capabilities
 
-PDF
- â”‚
- â”œâ”€â–¶ Unstructured PDF Parser
- â”‚     â”œâ”€ Text
- â”‚     â”œâ”€ Tables (HTML preserved)
- â”‚     â””â”€ Images
- â”‚
- â”œâ”€â–¶ Structure-Aware Chunking
- â”‚
- â”œâ”€â–¶ Embeddings (BGE-base)
- â”‚
- â”œâ”€â–¶ FAISS Vector Index
- â”‚
- â”œâ”€â–¶ Retriever (Top-K Recall)
- â”‚
- â”œâ”€â–¶ Cross-Encoder Reranker
- â”‚
- â”œâ”€â–¶ Context Builder
- â”‚
- â”œâ”€â–¶ Agent Supervisor
- â”‚     â”œâ”€ Intent Classification
- â”‚     â”œâ”€ Refusal Logic
- â”‚     â”œâ”€ Action Routing
- â”‚
- â””â”€â–¶ LLM (Ollama â€“ Mistral 7B)
+## 📄 Document Intelligence (RAG)
 
+Upload any corporate PDF and:
+
+* Ask factual questions
+* Get grounded answers
+* Receive structured responses
+* Prevent hallucinations
+
+Supports:
+
+* Text
+* Tables
+* Structured content
 
 ---
 
-## ðŸ” RAG Design (Important)
+## ⚙️ Agent-Based Reasoning
 
-### âœ” Structure-Preserving Tables
+The system intelligently detects user intent:
 
-* Tables are **never flattened**
-* HTML is preserved at extraction time
-* Numeric answers always come from source tables
+Example:
 
-### âœ” Two-Stage Retrieval
+**User Input**
 
-1. **Bi-encoder retrieval** (wide recall)
-2. **Cross-encoder reranking** (high precision)
+> Create a ticket for VPN not working
 
-### âœ” Evidence-Only Context
+**Output**
 
-The LLM only sees:
-
-* Retrieved text
-* Table references
-* Page numbers
-  â†’ **No hallucinations**
-
----
-
-## ðŸ§‘â€ðŸ’» Tech Stack
-
-| Component   | Tool                  |
-| ----------- | --------------------- |
-| PDF Parsing | unstructured        |
-| Embeddings  | BAAI/bge-base-en    |
-| Vector DB   | FAISS                 |
-| Reranker    | ms-marco-MiniLM     |
-| LLM         | Ollama (mistral:7b) |
-| Backend     | Flask                 |
-| Frontend    | HTML + CSS + JS       |
-| Language    | Python                |
-
----
-
-## ðŸ“ Project Structure
-
-Corporate-bot/
-â”‚
-â”œâ”€â”€ actions/              # Action registry & execution
-â”œâ”€â”€ agent/                # Agent supervisor & intent logic
-â”œâ”€â”€ ingestion/            # PDF parsing, tables, chunking
-â”œâ”€â”€ retrieval/            # Embedding, FAISS, reranking
-â”œâ”€â”€ llm/                  # Ollama client & response generator
-â”œâ”€â”€ templates/            # HTML frontend
-â”œâ”€â”€ static/               # CSS & JS
-â”œâ”€â”€ evaluation/           # Retrieval tests & debug tools
-â”œâ”€â”€ utils/                # Helpers & logging
-â”‚
-â”œâ”€â”€ app.py                # Core pipeline entry
-â”œâ”€â”€ web_app.py            # Flask web server
-â”œâ”€â”€ requirements.txt
-â””â”€â”€ README.md
-
-
----
-
-## â–¶ï¸ How to Run Locally (Offline)
-
-### 1ï¸âƒ£ Prerequisites
-
-* Python 3.9+
-* Ollama installed
-* Model pulled:
-
-bash
-ollama pull mistral
-
-
----
-
-### 2ï¸âƒ£ Install Dependencies
-
-bash
-pip install -r requirements.txt
-
-
----
-
-### 3ï¸âƒ£ Start the Application
-
-bash
-python web_app.py
-
-
-Open in browser:
-
-http://localhost:5000
-
-
----
-
-## ðŸ§ª Example Queries
-
-### ðŸ“„ PDF Question
-
-**Q:** What was the revenue growth in FY25?
-**A:**
-
-> Revenue growth in FY25 was **6.5%**.
-> *(Source: Page 107)*
-
----
-
-### ðŸ§  Conceptual Question
-
-**Q:** What are the key risks mentioned by the company?
-**A:**
-
-> Summarized explanation with page citations
-
----
-
-### âš™ï¸ Action Command
-
-**Q:** Create a ticket for VPN not working
-**Output JSON:**
-
-json
+```json
 {
   "action": "create_ticket",
   "department": "IT",
   "priority": "High",
   "description": "VPN not working"
 }
-
-
----
-
-### ðŸ›‘ Refusal Case
-
-**Q:** What is the quantum entanglement revenue?
-**A:**
-
-> Information not found in the document.
+```
 
 ---
 
-## ðŸ§¾ Evaluation Criteria Alignment
+## 🛡️ Hallucination Control
 
-| Criteria               | How We Address It                     |
-| ---------------------- | ------------------------------------- |
-| Accuracy (30%)         | Page-cited RAG, table-safe extraction |
-| Agent Capability (30%) | Deterministic action JSON             |
-| Impact (25%)           | Digital workplace automation          |
-| Presentation (15%)     | Clean UI + explainable architecture   |
+Strict refusal logic:
 
----
+If answer not present:
 
-## ðŸ” Safety & Trust
+> Information not found in uploaded document.
 
-* No hallucinated numbers
-* No table reconstruction from text
-* Explicit refusals when evidence is missing
-* Fully auditable answers
+No guessing. No fabricated answers.
 
 ---
 
-## ðŸ Conclusion
+# 🧠 Architecture Overview
 
-**Corporate-Bot** demonstrates a **real-world, production-ready agentic assistant** that combines:
-
-* Accurate document intelligence
-* Robust retrieval
-* Deterministic action execution
-
-Designed specifically for **enterprise-grade trust and offline demos**.
+```
+PDF Upload
+   ↓
+Unstructured Parser
+   ↓
+Structure-Aware Chunking
+   ↓
+Embedding (BGE)
+   ↓
+FAISS Vector Store
+   ↓
+Retriever
+   ↓
+Cross-Encoder Reranker
+   ↓
+Agent Supervisor
+   ↓
+HuggingFace LLM Inference
+   ↓
+Final Response
+```
 
 ---
 
+# 🧰 Technology Stack
+
+| Component        | Tool                   |
+| ---------------- | ---------------------- |
+| Backend          | Flask                  |
+| Frontend         | Next.js                |
+| Embeddings       | BAAI/bge-small-en      |
+| Vector DB        | FAISS                  |
+| Reranker         | cross-encoder/ms-marco |
+| LLM              | HuggingFace Inference  |
+| PDF Parser       | Unstructured           |
+| Hosting          | HuggingFace Spaces     |
+| Frontend Hosting | Vercel                 |
+
+---
+
+# 🌐 Live API Endpoints
+
+## Health Check
+
+```
+GET /
+```
+
+Response:
+
+```json
+{
+ "success": true
+}
+```
+
+---
+
+## Upload PDF
+
+```
+POST /api/v1/upload
+```
+
+---
+
+## Ask Question
+
+```
+POST /api/v1/chat
+```
+
+---
+
+# 🌍 Live Deployment
+
+Backend:
+
+```
+https://AyushAnand413-corporate-rag-bot-backend.hf.space
+```
+
+Frontend:
+
+```
+(Your Vercel URL)
+```
+
+---
+
+# 🧪 Example Queries
+
+## Factual
+
+> What is the vision of 6G networks?
+
+---
+
+## Table-based
+
+> What was revenue growth in FY25?
+
+---
+
+## Conceptual
+
+> What are key risks mentioned?
+
+---
+
+## Action
+
+> Create a ticket for VPN not working
+
+---
+
+# 🔐 Security & Safety
+
+✔ No hallucinated data
+✔ Evidence-based answers
+✔ Strict refusal logic
+✔ Secure inference via HF Token
+
+---
+
+# 🧑‍💻 Local Development
+
+## Requirements
+
+Python 3.10+
+
+---
+
+## Install
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Run
+
+```bash
+python web_app.py
+```
+
+Open:
+
+```
+http://localhost:7860
+```
+
+---
+
+# 🔑 Environment Variables
+
+Required:
+
+```
+HF_TOKEN=your_token
+```
+
+Optional:
+
+```
+HF_GENERATION_MODEL=meta-llama/Llama-3.2-3B-Instruct:novita
+ALLOWED_ORIGINS=*
+```
+
+---
+
+# 📁 Project Structure
+
+```
+Corporate-bot/
+│
+├ agent/
+├ ingestion/
+├ retrieval/
+├ llm/
+├ frontend/
+├ web_app.py
+├ Dockerfile
+└ requirements.txt
+```
+
+---
+
+# 📈 Production Features
+
+✔ Docker deployment
+✔ CI/CD via GitHub Actions
+✔ HF Spaces hosting
+✔ Vercel frontend
+✔ Runtime PDF ingestion
+✔ API-first backend
+
+---
+
+# 🎯 Use Cases
+
+Enterprise assistants
+Corporate document search
+Legal document QA
+Financial report analysis
+Internal automation bots
+
+---
+
+# 🧠 Model Used
+
+```
+meta-llama/Llama-3.2-3B-Instruct:novita
+```
+
+Hosted via:
+
+HuggingFace Inference API
+
+---
+
+# 👨‍💻 Author
+
+Ayush Kumar Anand
+Swarnim Vatsyayan
+
+---
+
+# ⭐ Conclusion
+
+Corporate-Bot is a fully production-ready enterprise AI assistant combining:
+
+* Retrieval-Augmented Generation
+* Agent-based reasoning
+* Secure cloud inference
+* Modern frontend architecture
+
+---
