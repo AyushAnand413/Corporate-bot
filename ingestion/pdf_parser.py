@@ -70,7 +70,7 @@ def parse_pdf(pdf_path: str, output_path: str):
 
         filename=pdf_path,
 
-        strategy="fast",               # ⭐ disables OCR completely
+        strategy="hi_res",               # ⭐ disables OCR completely
 
         infer_table_structure=False,  # ⭐ prevents OCR layout model
 
